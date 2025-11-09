@@ -85,15 +85,18 @@ func (server *Server) InitConnectHandler(connection net.Conn) {
 
 	// 当用连接进入时，表示用户上线，需要记录用户的连接信息到OnlineUserMap中
 	// 初始化用户并进行在线用户记录
-	user := InitUser(connection)
+	user := InitUser(connection, server)
 
 	// 给OnlineUserMap加锁
-	server.mapLock.Lock()
-	server.OnlineUserMap[user.Name] = user
-	server.mapLock.Unlock()
+	//server.mapLock.Lock()
+	//server.OnlineUserMap[user.Name] = user
+	//server.mapLock.Unlock()
 
 	// 广播当前用户上线给其他用户
-	server.BroadCast(user, "已上线")
+	// server.BroadCast(user, "已上线")
+
+	// 用户上线
+	user.Online()
 
 	// 接收客户端发送的消息
 	go handleReceive(connection, server, user)
@@ -117,6 +120,7 @@ func handleReceive(connection net.Conn, server *Server, user *User) {
 		// 提取用户消息（去除 \n）
 		message := string(buffer[:n-1])
 		// 将获取到的消息广播给所有用户
-		server.BroadCast(user, message)
+		// server.BroadCast(user, message)
+		user.HandleMessage(message) // 处理消息
 	}
 }
