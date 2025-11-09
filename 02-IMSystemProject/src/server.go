@@ -149,3 +149,17 @@ func handleReceive(connection net.Conn, server *Server, user *User) {
 		user.IsLive <- true
 	}
 }
+
+// GetOnlineUserByName 根据用户名查询在线用户
+func (server *Server) GetOnlineUserByName(userName string) (*User, bool) {
+	server.mapLock.RLock()
+	defer server.mapLock.RUnlock()
+
+	// 根据用户名查询在线用户
+	user, ok := server.OnlineUserMap[userName]
+	if ok {
+		return user, ok
+	} else {
+		return nil, false
+	}
+}

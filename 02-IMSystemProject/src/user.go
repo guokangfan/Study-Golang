@@ -95,6 +95,20 @@ func (user *User) HandleMessage(message string) {
 			user.Name = newUserName
 			user.SendMessage("当前用户名已更新为：" + newUserName + "\n")
 		}
+	} else if len(message) > 3 && message[0:3] == ":to" {
+		// 给指定用户发送消息，解析消息格式：:to 指定用户名 消息内容
+		instructions := strings.Split(message, " ")
+		toUserName := instructions[1]
+		messageData := instructions[2]
+
+		// 获取server在线用户信息
+		toUser, ok := user.server.GetOnlineUserByName(toUserName)
+		if ok {
+			waitSendMessage := "[" + user.Name + "] -> [" + toUser.Name + "] " + messageData + "\n"
+			toUser.SendMessage(waitSendMessage)
+		} else {
+			user.SendMessage("当前用户不在线，消息发送失败～")
+		}
 	} else {
 		user.server.BroadCast(user, message)
 	}
