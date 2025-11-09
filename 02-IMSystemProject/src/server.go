@@ -4,28 +4,29 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 )
 
 type Server struct {
-	IP   string // IP 地址
-	Port int    // Port 端口号
+	IP             string           // IP 地址
+	Port           int              // Port 端口号
+	OnlineUserMap  map[string]*User // 在线用户列表数据
+	mapLock        sync.RWMutex     // Map集合锁
+	MessageChannel chan string      // 消息广播通道
 }
 
 // InitServer Server初始化函数
 func InitServer(ip string, port int) *Server {
 	// 初始化Server实例对象
 	server := &Server{
-		IP:   ip,
-		Port: port,
+		IP:             ip,
+		Port:           port,
+		OnlineUserMap:  make(map[string]*User),
+		MessageChannel: make(chan string),
 	}
 
 	// 返回一个执行当前Server实例对象的指针
 	return server
-}
-
-// InitConnectHandler 连接建立初始化时调用当前方法进行处理
-func (server *Server) InitConnectHandler(connection net.Conn) {
-	fmt.Println("Connect init finish：", connection.RemoteAddr().String())
 }
 
 // Start 启动服务器对象
@@ -40,6 +41,9 @@ func (server *Server) Start() {
 	// 延迟释放IP和端口监听
 	defer listener.Close()
 
+	// 启动监听Message的Goroutine
+	go server.ListenMessage()
+
 	for {
 		// 监听端口的连接请求，如果有请求进入会创建一个connection连接并返回
 		connection, err := listener.Accept()
@@ -51,4 +55,42 @@ func (server *Server) Start() {
 		// 处理连接请求
 		go server.InitConnectHandler(connection)
 	}
+}
+
+// BroadCast 广播消息给所有的在线用户
+func (server *Server) BroadCast(user *User, message string) {
+	messageInfo := "[" + user.Name + "] " + message
+
+	// 消息管道中写入消息
+	server.MessageChannel <- messageInfo
+}
+
+// ListenMessage 监听MessageChannel中的消息，启动一个Go协程当有消息的时候，广播给全部的在线User
+func (server *Server) ListenMessage() {
+	for {
+		message := <-server.MessageChannel
+
+		server.mapLock.Lock()
+		for _, user := range server.OnlineUserMap {
+			user.MessageChannel <- message
+		}
+		server.mapLock.Unlock()
+	}
+}
+
+// InitConnectHandler 连接建立初始化时调用当前方法进行处理
+func (server *Server) InitConnectHandler(connection net.Conn) {
+	fmt.Println("Connect init：", connection.RemoteAddr().String())
+
+	// 当用连接进入时，表示用户上线，需要记录用户的连接信息到OnlineUserMap中
+	// 给OnlineUserMap加锁
+	server.mapLock.Lock()
+	defer server.mapLock.Unlock()
+
+	// 初始化用户并进行在线用户记录
+	user := InitUser(connection)
+	server.OnlineUserMap[user.Name] = user
+
+	// 广播当前用户上线给其他用户
+	server.BroadCast(user, "已上线")
 }
