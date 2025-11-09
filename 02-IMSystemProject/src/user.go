@@ -2,6 +2,7 @@ package main
 
 import (
 	"net"
+	"strings"
 )
 
 type User struct {
@@ -68,7 +69,7 @@ func (user *User) SendMessage(message string) {
 
 // HandleMessage 处理消息广播发送
 func (user *User) HandleMessage(message string) {
-	if message == ":user list" {
+	if message == ":ul" {
 		// 查询当前在线用户列表
 		user.server.mapLock.RLock()
 		for _, online := range user.server.OnlineUserMap {
@@ -76,6 +77,22 @@ func (user *User) HandleMessage(message string) {
 			user.SendMessage(onlineMessage)
 		}
 		user.server.mapLock.RUnlock()
+	} else if len(message) > 3 && message[0:3] == ":cn" {
+		// 消息格式：:cn 新用户名
+		newUserName := strings.Split(message, " ")[1]
+		// 判断当前将要更新的用户名是否被占用
+		_, ok := user.server.OnlineUserMap[newUserName]
+		if ok {
+			user.SendMessage("当前用户名被使用！")
+		} else {
+			user.server.mapLock.Lock()
+			delete(user.server.OnlineUserMap, user.Name)
+			user.server.OnlineUserMap[newUserName] = user
+			user.server.mapLock.Unlock()
+
+			user.Name = newUserName
+			user.SendMessage("当前用户名已更新为：" + newUserName + "\n")
+		}
 	} else {
 		user.server.BroadCast(user, message)
 	}
