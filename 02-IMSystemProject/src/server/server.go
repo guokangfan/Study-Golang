@@ -132,7 +132,7 @@ func handleReceive(connection net.Conn, server *Server, user *User) {
 		n, err := connection.Read(buffer)
 		if n == 0 {
 			server.BroadCast(user, "已下线")
-			user.Offline()
+			//user.Offline()
 		}
 		if err != nil && err == io.EOF {
 			fmt.Println("Connection read err: ", err)
@@ -140,7 +140,7 @@ func handleReceive(connection net.Conn, server *Server, user *User) {
 		}
 
 		// 提取用户消息（去除 \n）
-		message := string(buffer[:n-1])
+		message := string(buffer[:n])
 		// 将获取到的消息广播给所有用户
 		// server.BroadCast(user, message)
 		user.HandleMessage(message) // 处理消息
