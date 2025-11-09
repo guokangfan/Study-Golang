@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"sync"
@@ -83,14 +84,39 @@ func (server *Server) InitConnectHandler(connection net.Conn) {
 	fmt.Println("Connect init：", connection.RemoteAddr().String())
 
 	// 当用连接进入时，表示用户上线，需要记录用户的连接信息到OnlineUserMap中
-	// 给OnlineUserMap加锁
-	server.mapLock.Lock()
-	defer server.mapLock.Unlock()
-
 	// 初始化用户并进行在线用户记录
 	user := InitUser(connection)
+
+	// 给OnlineUserMap加锁
+	server.mapLock.Lock()
 	server.OnlineUserMap[user.Name] = user
+	server.mapLock.Unlock()
 
 	// 广播当前用户上线给其他用户
 	server.BroadCast(user, "已上线")
+
+	// 接收客户端发送的消息
+	go handleReceive(connection, server, user)
+}
+
+// 接收客户端发送的消息，然后进行消息广播
+func handleReceive(connection net.Conn, server *Server, user *User) {
+	buffer := make([]byte, 4096)
+
+	for {
+		// 从Connection中读取数据
+		n, err := connection.Read(buffer)
+		if n == 0 {
+			server.BroadCast(user, "已下线")
+		}
+		if err != nil && err == io.EOF {
+			fmt.Println("Connection read err: ", err)
+			return
+		}
+
+		// 提取用户消息（去除 \n）
+		message := string(buffer[:n-1])
+		// 将获取到的消息广播给所有用户
+		server.BroadCast(user, message)
+	}
 }
