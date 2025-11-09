@@ -61,7 +61,22 @@ func (user *User) Offline() {
 	user.server.BroadCast(user, "已下线")
 }
 
+// SendMessage 给当前用户发送消息
+func (user *User) SendMessage(message string) {
+	user.connection.Write([]byte(message))
+}
+
 // HandleMessage 处理消息广播发送
 func (user *User) HandleMessage(message string) {
-	user.server.BroadCast(user, message)
+	if message == ":user list" {
+		// 查询当前在线用户列表
+		user.server.mapLock.RLock()
+		for _, online := range user.server.OnlineUserMap {
+			onlineMessage := "[" + online.Addr + "]" + online.Name + ": 在线\n"
+			user.SendMessage(onlineMessage)
+		}
+		user.server.mapLock.RUnlock()
+	} else {
+		user.server.BroadCast(user, message)
+	}
 }
