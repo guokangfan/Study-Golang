@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -100,6 +101,26 @@ func (server *Server) InitConnectHandler(connection net.Conn) {
 
 	// 接收客户端发送的消息
 	go handleReceive(connection, server, user)
+
+	// 阻塞当前handler
+	for {
+		select {
+		case <-user.IsLive:
+			// 表示当前用户处于活跃状态，重制超时定时器
+		case <-time.After(time.Minute * 1):
+			// 进入当前作用域，活跃超时，强行对User进行处理
+			user.SendMessage("长时间未活跃，连接关闭")
+
+			// 移除用户在线状态
+			user.Offline()
+
+			// 资源回收
+			close(user.MessageChannel)
+			user.connection.Close()
+
+			return
+		}
+	}
 }
 
 // 接收客户端发送的消息，然后进行消息广播
@@ -111,6 +132,7 @@ func handleReceive(connection net.Conn, server *Server, user *User) {
 		n, err := connection.Read(buffer)
 		if n == 0 {
 			server.BroadCast(user, "已下线")
+			user.Offline()
 		}
 		if err != nil && err == io.EOF {
 			fmt.Println("Connection read err: ", err)
@@ -122,5 +144,8 @@ func handleReceive(connection net.Conn, server *Server, user *User) {
 		// 将获取到的消息广播给所有用户
 		// server.BroadCast(user, message)
 		user.HandleMessage(message) // 处理消息
+
+		// 更新用户的活跃状态
+		user.IsLive <- true
 	}
 }

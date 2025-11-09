@@ -11,6 +11,7 @@ type User struct {
 	MessageChannel chan string // 消息管道
 	connection     net.Conn    // TCP连接信息
 	server         *Server     // 服务实例
+	IsLive         chan bool   // 当前用户存活标识
 }
 
 // InitUser 初始化用户信息
@@ -25,6 +26,7 @@ func InitUser(connection net.Conn, server *Server) *User {
 		MessageChannel: make(chan string),
 		connection:     connection,
 		server:         server,
+		IsLive:         make(chan bool),
 	}
 
 	// 启动一个Go协程，监听当前用户的Message Channel中是否有消息进入
