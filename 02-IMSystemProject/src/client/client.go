@@ -41,12 +41,13 @@ func (client *Client) Menu() bool {
 	fmt.Println("1.群聊模式")
 	fmt.Println("2.私聊模式")
 	fmt.Println("3.更新用户名")
+	fmt.Println("4.获取当前在线用户列表")
 	fmt.Println("0.退出")
 
 	// 等待用户输入
 	fmt.Scanln(&flag)
 
-	if flag >= 1 && flag <= 3 {
+	if flag >= 1 && flag <= 4 {
 		client.flag = flag
 		return true
 	} else {
@@ -70,6 +71,70 @@ func (client *Client) updateUserName() bool {
 	return true
 }
 
+// 获取在线用户列表
+func (client *Client) listOnlineUser() bool {
+	requestMessage := ":ul "
+	_, err := client.connection.Write([]byte(requestMessage))
+	if err != nil {
+		fmt.Println("write error: ", err)
+		return false
+	}
+	return true
+}
+
+// 群聊模式
+func (client *Client) publishSendMessage() bool {
+	var chatMessage string
+
+	fmt.Println("--- 请输入聊天内容，输入【exit】退出 ---")
+	fmt.Scanln(&chatMessage)
+
+	for chatMessage != "exit" {
+		// 发送给服务端
+		_, err := client.connection.Write([]byte(chatMessage))
+		if err != nil {
+			fmt.Println("write error: ", err)
+			return false
+		}
+
+		chatMessage = ""
+		fmt.Println("--- 请输入聊天内容，输入【exit】退出 ---")
+		fmt.Scanln(&chatMessage)
+	}
+
+	return true
+}
+
+// 私聊模式
+func (client *Client) privateSendMessage() bool {
+	var userName string
+	var chatMessage string
+
+	fmt.Println("--- 请输入聊天用户名，输入【exit】退出 ---")
+	fmt.Scanln(&userName)
+
+	if userName != "exit" {
+		fmt.Println("--- 请输入聊天内容，输入【exit】退出 ---")
+		fmt.Scanln(&chatMessage)
+
+		for chatMessage != "exit" {
+			requestMessage := ":to " + userName + " " + chatMessage
+
+			// 发送给服务端
+			_, err := client.connection.Write([]byte(requestMessage))
+			if err != nil {
+				fmt.Println("write error: ", err)
+				return false
+			}
+
+			chatMessage = ""
+			fmt.Println("--- 请输入聊天内容，输入【exit】退出 ---")
+			fmt.Scanln(&chatMessage)
+		}
+	}
+	return true
+}
+
 func (client *Client) Run() {
 	for client.flag != 0 {
 		for client.Menu() != true {
@@ -79,20 +144,22 @@ func (client *Client) Run() {
 		switch client.flag {
 		case 1:
 			// 群聊模式
-			fmt.Println("--- 群聊模式 ---")
-
+			// fmt.Println("--- 群聊模式 ---")
+			client.publishSendMessage()
 		case 2:
 			// 	私聊模式
-			fmt.Println("--- 私聊模式 ---")
-
+			// fmt.Println("--- 私聊模式 ---")
+			client.privateSendMessage()
 		case 3:
 			// 更新用户名
 			// fmt.Println("--- 更新用户名 ---")
 			client.updateUserName()
 			break
+		case 4:
+			client.listOnlineUser()
+			break
 		}
 	}
-
 }
 
 // 处理服务端回复消息

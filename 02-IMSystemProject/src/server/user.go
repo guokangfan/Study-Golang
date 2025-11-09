@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"strings"
 )
@@ -71,7 +72,9 @@ func (user *User) SendMessage(message string) {
 
 // HandleMessage 处理消息广播发送
 func (user *User) HandleMessage(message string) {
-	if message == ":ul" {
+	fmt.Println("接收到消息：", message)
+
+	if strings.Trim(message, " ") == ":ul" {
 		// 查询当前在线用户列表
 		user.server.mapLock.RLock()
 		for _, online := range user.server.OnlineUserMap {

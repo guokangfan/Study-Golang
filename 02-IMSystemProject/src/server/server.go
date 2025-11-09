@@ -107,7 +107,7 @@ func (server *Server) InitConnectHandler(connection net.Conn) {
 		select {
 		case <-user.IsLive:
 			// 表示当前用户处于活跃状态，重制超时定时器
-		case <-time.After(time.Minute * 1):
+		case <-time.After(time.Minute * 10):
 			// 进入当前作用域，活跃超时，强行对User进行处理
 			user.SendMessage("长时间未活跃，连接关闭")
 
